@@ -30,7 +30,7 @@
       "optional": false
     }
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HAN102300/dsh-opencode-free.git"

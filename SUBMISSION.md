@@ -1,316 +1,180 @@
-# dsh-opencode-free 收录申请指南
+# dsh-opencode-free 收录状态
 
-按 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `contributing.md` 要求，把本插件收录进官方列表的完整步骤。
+**当前状态：PR 已提交，仅等仓库年龄达标。**
 
----
-
-## 前置检查清单
-
-对照 `contributing.md` 的硬性要求逐项确认：
-
-| # | 要求 | 状态 | 备注 |
-|---|---|---|---|
-| 1 | `package.json` 声明 `dsh.bundle` | ✅ | `{"bundle": {"patch": "./cordis.patch.yml"}}` |
-| 2 | 仓库根有 `cordis.patch.yml` | ✅ | 内容为 `insert` 一条 loader 条目 |
-| 3 | 真实可用的代码 | ✅ | 4 个模块，匿名/私有双模式已实测 |
-| 4 | 仓库创建满 1 天 | ⏳ | **CI 自动查，需等 24 小时** |
-| 5 | 仓库加 `dsh-plugin` topic | ⏳ | GitHub 仓库 Settings → Topics |
-| 6 | 描述属实、无营销词 | ✅ | 见文末 entry 文件 |
-| 7 | 不与已有条目重复 | ⚠️ | **撞 DragonHorizon 那款，需在 PR 里说明差异** |
-| 8 | 官方 `@deepseek-ai/*` 用 `peerDependencies` | ✅ | 已用带预发布分支的 `\|\|` 写法 |
-| 9 | 每个 PR 最多 3 条 | ✅ | 只有 1 条 |
+| 项 | 值 |
+|---|---|
+| 插件仓库 | https://github.com/HAN102300/dsh-opencode-free |
+| 收录 PR | https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7884 |
+| `dsh-plugin` topic | ✅ 已添加 |
+| 条目文件 | `data/plugins/HAN102300__dsh-opencode-free.yml` |
+| CI 结果 | `check` ✅ 通过；`Submission gate` ❌ 仅因仓库年龄 |
+| 需人工操作 | **无** |
 
 ---
 
-## 第 1 步：创建并推送 GitHub 仓库
+## CI 反馈原文
 
-```bash
-cd D:\dsh-working\dsh-opencode-free
+```
+Submission gate — 1 entry/entries need changes
 
-# 1. 在 GitHub 上建空仓库（不要勾选 README/license/gitignore）
-#    仓库名建议：dsh-opencode-free
-
-# 2. 关联远端并推送
-git remote add origin https://github.com/<你的用户名>/dsh-opencode-free.git
-git branch -M main
-git push -u origin main
+https://github.com/HAN102300/dsh-opencode-free
+- repository is 0.0 days old (needs 1) — nothing to do: this check re-runs by
+  itself and should clear in about 24h. No need to resubmit, push, or close and
+  reopen; the age bar is the only thing failing here.
 ```
 
-推送后立即做两件事：
+**关键点：不需要做任何事，等待即可。** 不需要关闭重开 PR，不需要 push，不需要重新提交。
 
-**① 加 topic**
-
-仓库页 → 右上角 ⚙️ (About) → Topics → 输入 `dsh-plugin` → 保存。
-
-**② 改掉 package.json 里的 OWNER 占位**
-
-```bash
-# 把 OWNER 替换成你真实的 GitHub 用户名
-sed -i 's/OWNER/<你的用户名>/g' package.json
-git add package.json && git commit -m "chore: set repository url"
-git push
-```
-
-> `contributing.md` 没要求 `repository` 字段，但 npm 发布与市场关联会用到，先填对更省后续维护。
-
-**③ 等 24 小时**
-
-CI 会检查仓库创建时间。这期间可以先做第 2 步的准备。
+仓库创建于 `2026-10-18T08:18:35Z`，满 24 小时后 gate 会自动重跑并通过。
 
 ---
 
-## 第 2 步：Fork 官方列表仓库
+## 已通过的全部检查
 
-```bash
-# 在 GitHub 上点 Fork：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin
+`check` job（14 个步骤全部 success）：
 
-git clone https://github.com/<你的用户名>/awesome-dsh-plugin.git
-cd awesome-dsh-plugin
-git remote add upstream https://github.com/awesome-dsh-plugin/awesome-dsh-plugin.git
-```
+| 步骤 | 结果 |
+|---|---|
+| Stale-fork guard | ✅ |
+| Every entry file ends in .yml | ✅ |
+| Entry files live in data/plugins/ | ✅ |
+| A generated README row that lists nothing is not a submission | ✅ |
+| READMEs match data/plugins | ✅ |
+| awesome-lint | ✅ |
+| Added-date regression tests | ✅ |
+| Capability-disclosure tests | ✅ |
+| Discussion-adoption tests | ✅ |
+| Entry-path tests | ✅ |
+| Build (locale parity, date derivation, templates) | ✅ |
+
+说明 `dsh.bundle` manifest、YAML 格式、双语一致性、分类、条目路径全部合规。
 
 ---
 
-## 第 3 步：创建条目文件
+## 条目内容
 
-**只需一个文件**，路径与命名规则是 `data/plugins/<owner>__<repo>.yml`：
-
-```bash
-# 注意是双下划线
-vim data/plugins/<你的用户名>__dsh-opencode-free.yml
-```
-
-内容（把 `<你的用户名>` 替换掉）：
+`data/plugins/HAN102300__dsh-opencode-free.yml`：
 
 ```yaml
-url: https://github.com/<你的用户名>/dsh-opencode-free
-name: <你的用户名>/dsh-opencode-free
+url: https://github.com/HAN102300/dsh-opencode-free
+name: HAN102300/dsh-opencode-free
 category: model
 description:
   en: 'OpenCode Zen free-tier models for DeepSeek Harness with anonymous no-key access, a loopback OpenAI-compatible shim, and real bash/read gate tools.'
   zh: '为 DeepSeek Harness 接入 OpenCode Zen 免费模型：默认免 key 走公共额度，内置回环 OpenAI 兼容 shim，并把网关要求的 bash/read 注册为真实可执行工具。'
 ```
 
-### 关键规则
+英文描述含 `: `（冒号+空格）所以用单引号包住——这是 `contributing.md` 明确要求的，否则 YAML 会解析失败。
 
-| 规则 | 说明 |
+---
+
+## 24 小时后
+
+### 如果 gate 自动变绿
+
+CI 会自己重跑，什么都不用做。之后等维护者人工 review：
+
+- 会实际读插件源码，核对描述里的每一条声明
+- 会判断分类是否贴切（不贴切维护者直接改，不会打回）
+- 会判断是否与已有条目重复
+
+### 如果一直没变绿
+
+在 PR 里留个评论触发重跑，或直接看 PR 页面的 check 状态。
+
+### 可能需要应对的 review 意见
+
+最可能被问的是**与已有条目的重复**。列表里已有：
+
+| 条目 | 做了什么 |
 |---|---|
-| `url` | 必须与仓库地址**完全一致** |
-| `name` | 列表里显示的链接文字，用 `owner/repo` |
-| `category` | 分类选 `model`（模型接入） |
-| `description.en` | **唯一必填字段** |
-| `description.zh` | 可选，不写维护者会补 |
-| **含 `: ` 必须加引号** | 上面的 `en` 里有冒号+空格，所以用单引号包住 |
+| `DragonHorizon-xtihc/dsh-connect-opencode-free` | 免 key、双源发现、设置页、三档额度 |
+| `A42Null/dsh-opencode-zen-plugin` | Console key、目录同步、免费模型默认隐藏 |
+| `Ebony-Vinyl/dsh-our-free-model` | 免费车道 + 本地网关 |
 
-### ⚠️ 绝对不要做的事
+PR 描述里已经主动说明了差异（零第三方依赖、约 30KB、聚焦记录并强制执行请求形态、bash/read 是真工具）。如果维护者仍认为重叠，回应要点：
 
-- ❌ 不要手工编辑 `README.md` / `README.zh.md`（由脚本从 `data/plugins/*.yml` 生成）
-- ❌ 不要碰别人的条目文件
-- ❌ 一个 PR 不要超过 3 条
-
----
-
-## 第 4 步（可选）：本地预览
-
-```bash
-npm ci
-node scripts/generate-readme.mjs
-```
-
-会重新生成两个 README。**可以提交预览结果，但必须与数据源一致**——不一致 CI 会挂。
-
-不跑也行，CI 会自动生成。
-
----
-
-## 第 5 步：提交 PR
-
-```bash
-git checkout -b add-dsh-opencode-free
-git add data/plugins/<你的用户名>__dsh-opencode-free.yml
-# 如果第 4 步跑了生成脚本，一起提交：
-# git add README.md README.zh.md
-
-git commit -m "Add <你的用户名>/dsh-opencode-free"
-git push origin add-dsh-opencode-free
-```
-
-然后在 GitHub 上向 `awesome-dsh-plugin/awesome-dsh-plugin:main` 开 PR。
-
----
-
-## 第 6 步：PR 描述——主动说明与已有条目的差异
-
-这是**最容易被拒的一环**。列表里已有高度相似的条目：
-
-| 已有条目 | 做了什么 |
-|---|---|
-| `DragonHorizon-xtihc/dsh-connect-opencode-free` | 免 key 接入 Zen 免费档、双源模型发现、设置页 UI、三档额度策略 |
-| `A42Null/dsh-opencode-zen-plugin` | Console key 接入、目录自动同步、免费模型默认隐藏 |
-| `Ebony-Vinyl/dsh-our-free-model` | 免费模型车道 + 本地 OpenAI 兼容网关 |
-
-`contributing.md` 第 4 条原文：
-
-> Where two plugins do the same thing, whoever got here first keeps the slot — but that is a tiebreaker, not tenure... **The rule is not first-come; the rule is whichever is better.**
-
-**建议在 PR 描述里写清楚**（照抄修改）：
-
-```markdown
-Adds `<你的用户名>/dsh-opencode-free`.
-
-Similar entries already listed: DragonHorizon-xtihc/dsh-connect-opencode-free,
-A42Null/dsh-opencode-zen-plugin, Ebony-Vinyl/dsh-our-free-model.
-
-This one differs in scope: it is a ~22 KB, dependency-free (node builtins only)
-implementation whose point is to document and enforce the free-tier request
-shape rather than to ship a settings UI. Specifically:
-
-- Anonymous access via `Authorization: Bearer public` (no key), with an optional
-  private mode using a Console API key.
-- A loopback shim that enforces the three request-shape checks the gateway
-  actually applies (verified by bisection against a live `opencode` client):
-  the opencode-shaped user-agent / `x-opencode-client`, a *real* registered
-  `x-opencode-session` (read from the local opencode session store, since
-  randomly generated ids are rejected), and `bash` + `read` present in `tools`.
-- `bash` and `read` are registered as real executable tools, not stubs, so a
-  model that calls them is not derailed.
-- Exponential-backoff retry, because the gateway returns intermittent
-  empty-bodied 500s that the upstream client also retries 6-8 times.
-
-No UI surface, no bundled model catalog, no dependencies beyond the DSH peer
-packages. Happy to adjust the category or trim the description if it reads as
-overlapping.
-```
-
-> 诚实说明差异 + 承认可能重叠，比声称「独一无二」更容易过。说明里用到的数字（22 KB、4 个模块、无第三方依赖）必须与代码相符——维护者会核对。
-
----
-
-## 第 7 步：等 CI
-
-CI 按顺序检查：
-
-1. **条目数** ≤ 3
-2. **`dsh.bundle`** 存在（从你的仓库 `package.json` 读）
-3. **仓库年龄** ≥ 1 天
-4. **`awesome-lint`** + 站点构建
-
-任一失败，输出会明确指出改什么。**在同一分支推修复即可，不用重开 PR。**
+- 不辩解「独一无二」，直接问「需要我改成什么形态才好收录」
+- 可以主动提议把描述范围收窄到「最小参考实现 + 完整逆向文档」
 
 ---
 
 ## 后续维护
 
-### 更新描述或分类
+### 更新条目（改描述/分类）
 
 ```bash
+# 在 fork 的 add-dsh-opencode-free 分支上直接改
 cd awesome-dsh-plugin
-git pull upstream main
-# 只改自己那一个文件
-vim data/plugins/<你的用户名>__dsh-opencode-free.yml
-npm ci && node scripts/generate-readme.mjs
-git add data/plugins/<你的用户名>__dsh-opencode-free.yml README.md README.zh.md
-git commit -m "Update dsh-opencode-free description"
+git checkout add-dsh-opencode-free
+vim data/plugins/HAN102300__dsh-opencode-free.yml
+git commit -am "Update description"
 git push
 ```
 
-> **只改自己那一条**。手改 README 是这类事故的常见起因——列表增长会移位，改动落到邻居头上。
+**只改自己那一个文件**，不要碰别人的条目，不要手改 README。
 
-### 发新版本
+### 插件发版
 
-插件仓库自己发版即可，列表条目不用动（除非能力描述变了）。
+插件仓库自己发版即可，条目不一定要动。但**若能力描述变化，必须同步更新条目**——描述被当作对插件的声明，与代码不符会被要求改。
 
-若能力有变化（例如新增了模型、改了配置项），**必须同步更新 description**——
-描述被当作对插件的声明，与代码不符会被要求修改。
+### 保持活跃
 
-### 定期自查
-
-`contributing.md` 提到有周期扫描：仓库消失、归档、长期停更的条目会被标记并移除。
-保持插件仓库有活跃提交即可。
+官方有周期扫描：仓库消失、归档、长期停更的条目会被标记并移除。保持插件仓库有提交即可。
 
 ---
 
-## 可选：提升安装体验
+## 可选优化
 
-### A. 发布到 npm
+### 发布到 npm
+
+好处：预构建安装免 `allowBuilds` 步骤；市场可显示下载量。
 
 ```bash
 cd dsh-opencode-free
 npm publish
 ```
 
-好处：
-- 预构建安装，跳过 `allowBuilds` 构建授权步骤
-- 市场可显示下载量（自动采集，**条目里不要手写 `npm:` 字段，会被校验拒绝**）
+注意：
+- `package.json` 的 `repository` 必须指回被收录的仓库（已配好：`HAN102300/dsh-opencode-free`）
+- 映射自动采集，**条目里不要手写 `npm:` 字段**，会被校验拒绝
 
-注意：`package.json` 的 `repository` 必须指回被收录的那个仓库，否则不会关联。
+### 加截图
 
-### B. 或：GitHub Release + tarball 字段
-
-```bash
-npm pack
-# 把生成的 dsh-opencode-free-0.2.0.tgz 上传到 GitHub Release
-```
-
-然后在条目文件加：
-
-```yaml
-tarball: https://github.com/<你的用户名>/dsh-opencode-free/releases/latest/download/dsh-opencode-free.tgz
-```
-
-⚠️ **`latest/download/` 的文件名是照字面取的**。资产名若带版本号，下次发版就 404。
-要么资产名不带版本（如上），要么钉住 tag：
-
-```yaml
-tarball: https://github.com/<你的用户名>/dsh-opencode-free/releases/download/v0.2.0/dsh-opencode-free-0.2.0.tgz
-```
-
-### C. 截图（可选，推荐）
-
-在市场详情页展示 App Store 风格截图。**在你自己仓库里声明**：
+在插件仓库放 `screenshots.json`：
 
 ```jsonc
-// dsh-opencode-free/screenshots.json
-["assets/screenshot-1.png", "assets/screenshot-2.png"]
+["assets/screenshot-1.png"]
 ```
 
-规则：
-- 1–8 张
-- 路径相对该文件，不能以 `/` 开头、不能含 `..`
-- 绝对 URL 必须是 GitHub 托管（`raw.githubusercontent.com` 等），第三方图床会被拒
-- 不声明也行，市场会从 README 自动抽取
+1–8 张，相对路径不能跳出仓库，第三方图床会被拒。不声明也行，市场会从 README 抽取。
 
 ---
 
-## 常见拒稿原因对照
-
-| 原因 | 本插件的状态 |
-|---|---|
-| 只声明了 `dsh.client`，没有 `dsh.bundle` | ✅ 已正确声明 `bundle` |
-| 仓库几分钟前才建 | ⏳ 需等 24h |
-| 描述夸大、与代码不符 | ✅ 已按实际能力写 |
-| 与已有条目重复 | ⚠️ 需在 PR 里说明差异 |
-| peerDependencies 写法导致 ERESOLVE | ✅ 已用带预发布分支的 `\|\|` |
-| YAML 里 `: ` 没加引号 | ✅ 已加单引号 |
-| 手改了 README | ✅ 不要动 |
-| PR 动了别人的条目 | ✅ 只加自己一个文件 |
-
----
-
-## 当前仓库状态
+## 仓库最终结构
 
 ```
-dsh-opencode-free/
+dsh-opencode-free/          https://github.com/HAN102300/dsh-opencode-free
 ├── .gitignore
-├── LICENSE              (MIT)
-├── README.md            (完整技术文档 + 排错对照表)
-├── cordis.patch.yml     (insert llm-opencode-free)
-├── package.json         (dsh.bundle + 正确的 peerDependencies)
+├── LICENSE                 Apache-2.0（GitHub 建库时生成）
+├── README.md               完整技术文档 + 排错对照表
+├── SUBMISSION.md           本文件
+├── cordis.patch.yml        insert llm-opencode-free
+├── package.json            dsh.bundle + 预发布分支 peerDependencies
 └── lib/
-    ├── index.js         (Cordis 入口、provider 注册、门禁工具注册)
-    ├── shim.js          (loopback 转发 + 重试 + 形态修正)
-    ├── free-tier.js     (三层校验补齐、session 发现)
-    └── gate-tools.js    (bash/read 真实可执行实现)
+    ├── index.js            Cordis 入口、provider 注册、门禁工具注册
+    ├── shim.js             loopback 转发 + 指数退避重试 + 形态修正
+    ├── free-tier.js        三层校验补齐、session 自动发现
+    └── gate-tools.js       bash/read 真实可执行实现
 ```
 
-已提交到本地 git：`d7293d3`
+提交历史：
+
+```
+d867767 chore: align license field with Apache-2.0 LICENSE
+de9850e merge: adopt remote LICENSE
+ebfa744 chore: set repository url to HAN102300
+1ab736f docs: add submission guide
+d7293d3 feat: OpenCode Zen free-tier provider for DSH
+```

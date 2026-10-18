@@ -33,12 +33,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/dsh-opencode-free.git"
+    "url": "git+https://github.com/HAN102300/dsh-opencode-free.git"
   },
   "bugs": {
-    "url": "https://github.com/OWNER/dsh-opencode-free/issues"
+    "url": "https://github.com/HAN102300/dsh-opencode-free/issues"
   },
-  "homepage": "https://github.com/OWNER/dsh-opencode-free#readme",
+  "homepage": "https://github.com/HAN102300/dsh-opencode-free#readme",
   "files": [
     "lib",
     "cordis.patch.yml",

@@ -1,0 +1,5 @@
+# 把 OpenCode Zen 免费模型注册进 DSH 的模型选择器。
+# 只注册 provider，不改动 profile 现有默认模型。
+- insert:
+    - id: llm-opencode-free
+      name: dsh-opencode-free

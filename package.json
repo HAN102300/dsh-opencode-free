@@ -1,0 +1,48 @@
+{
+  "name": "dsh-opencode-free",
+  "displayName": "DSH OpenCode Free",
+  "description": "Brings OpenCode Zen free-tier models into DeepSeek Harness, with anonymous no-key access and a local OpenAI-compatible shim.",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "opencode",
+    "model-provider",
+    "free-models"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": ">=0.0.1-rc.1 <0.1.0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm-pi-ai": ">=0.0.1-rc.1 <0.1.0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@earendil-works/pi-ai": ">=1.0.0 <2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": {
+      "optional": false
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/dsh-opencode-free.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/dsh-opencode-free/issues"
+  },
+  "homepage": "https://github.com/OWNER/dsh-opencode-free#readme",
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ]
+}

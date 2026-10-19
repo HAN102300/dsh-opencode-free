@@ -2,18 +2,15 @@
 
 把 **OpenCode Zen 的免费模型**接入 **DeepSeek Harness（DSH）** 的模型选择器。
 
-两种额度模式：
-
 - **anonymous（默认）**：`Authorization: Bearer public` 走公共额度，**无需 API key**
 - **private**：使用自己的 OpenCode Console API key（`oc_sk_...`）
+- **零本地依赖**：不需要本机装过 OpenCode，不需要登录，不需要读任何本地数据
 
-所有结论来自对本机 `opencode v2.0.32` 的实测抓包与逐项二分验证，非文档推测。
+所有结论来自实测抓包与逐项二分验证，非文档推测。
 
 ---
 
 ## 1. 免费模型清单与实测可用性
-
-`GET https://opencode.ai/inference/v1/models` 返回 79 个模型，其中免费的有 10 个：
 
 | 模型 ID | 实测状态 | 说明 |
 |---|---|---|
@@ -21,33 +18,28 @@
 | `big-pickle` | ✅ 可用 | Stealth 模型，免费期数据可能用于改进 |
 | `longcat-2.5-preview-free` | ✅ 可用 | 零留存 |
 | `mimo-v2.6-flash-free` | ✅ 可用 | 免费期数据可能用于改进 |
-| `glm-5.3-flash-free` | ⚠️ 上游 500 | 限时免费、零留存；当前上游侧故障 |
-| `deepseek-v4.1-flash-free` | ⚠️ 上游 500 | 限时免费；当前上游侧故障 |
-| `beam-free` | ⚠️ 上游 500 | 数据保留 30 天；**中国大陆/香港/澳门不可用** |
-| `nemotron-3.5-lightning-free` | ⚠️ 上游 500 | NVIDIA 试用端点，勿传敏感数据 |
+| `glm-5.3-flash-free` | ✅ 可用 | 限时免费、零留存 |
+| `deepseek-v4.1-flash-free` | ✅ 可用 | 限时免费 |
+| `beam-free` | ❌ 地区限制 | 返回 `RegionError`；文档声明中国大陆/香港/澳门不可用 |
+| `nemotron-3.5-lightning-free` | ✅ 可用 | NVIDIA 试用端点，勿传敏感数据 |
 | `nemotron-3.5-super-vl-free` | 未测 | NVIDIA 试用端点，支持视觉 |
 | `jev-1.13-free` | 未纳入 | **System One 结构化决策模型，不是聊天模型** |
 
-> `⚠️ 上游 500` 的判断依据：同一 session、同一伪装头、同一请求形态下，
-> 换成 `space-bunny-free` 立刻 200，换回 `glm-5.3-flash-free` 就 500。
-> 这是模型维度的差异，不是请求构造问题。
-
-插件里全部 9 个聊天免费模型都注册了（含当前故障的），上游修复后无需改配置即可用。
+> 注：早期版本曾把 `glm-5.3-flash-free`、`deepseek-v4.1-flash-free` 等标为「上游故障」，
+> 那是误判。真实原因是当时用的 session id 生成算法不对（见 §2.2），修正后全部可用。
 
 ---
 
-## 2. 三层校验（这是最容易被忽略的部分）
+## 2. 免费层的四层校验
 
-免费模型**不是**「拿到 key 就能直连的 OpenAI 兼容端点」。实测发现上游有三层独立校验，
-任一不满足都会失败，且失败形态不同：
+免费模型**不是**「拿到 key 就能直连的 OpenAI 兼容端点」。上游对请求做四层独立校验：
 
 | 层 | 缺什么 | 错误 |
 |---|---|---|
 | L1 客户端身份 | UA / `x-opencode-client` | `403 FreeTierError` |
-| L2 会话归属 | `x-opencode-session` 不是服务端登记的 | `500`（空 body） |
-| L3 门禁工具 | `tools` 里不同时包含 `bash` 和 `read` | `500`（空 body） |
-
-**匿名通道与私有 key 走的是同一套校验**，三层全部要满足（实测确认）。
+| L2 会话形态 | `ses_` 后 12 位 hex 不是时间戳编码 | `500`（空 body） |
+| L3 门禁工具 | `tools` 里不同时含 `bash` 和 `read` | `500`（空 body） |
+| L4 流式 | `stream` 不为 `true` | 被拒 |
 
 ### 2.1 L1：客户端身份头
 
@@ -59,58 +51,51 @@ HTTP 403
  "message":"OpenCode's free tier can only be used from within OpenCode. Download it at https://opencode.ai and keep building."}}
 ```
 
-抓包得到的必需头：
+插件发送的身份头：
 
 ```
-user-agent:         opencode/latest/2.0.32/cli
-x-opencode-client:  cli
+User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-free/0.1.2
+x-opencode-client: cli
+x-opencode-project: global
 ```
 
-UA 的构造公式从 opencode 二进制里提取到：
+只写 `opencode/<version>/cli` 也能过 L1，但真实客户端是复合 UA，对齐更稳。
+`x-opencode-project` 可以是任意字符串。
+
+### 2.2 L2：session 必须是「时间戳编码」形态
+
+这是最容易踩的坑，也推翻了一个流传较广的误解。
+
+**误解**：`x-opencode-session` 必须是「OpenCode 服务端登记过的真实会话」，
+于是插件被迫去读本机 `~/.local/share/opencode/storage/session_diff/`，
+在没装 OpenCode 的机器上直接不可用。
+
+**实测矩阵**（同一 UA、同一请求头，只改 session 生成方式）：
+
+| session 形态 | 结果 |
+|---|---|
+| 随机 hex（`ses_` + 48 hex 字符） | ❌ 500 |
+| sha256 哈希派生的 hex | ❌ 500 |
+| 从本地 opencode 存储读的真实历史 id | ✅ 200 |
+| **时间戳编码 + base62 尾部** | ✅ 200 |
+
+真正的规则是 `ses_` 之后前 12 位十六进制必须是**时间戳编码值**：
 
 ```js
-function Yl(e){ return `opencode/${e.channel}/${e.version}/${e.name}` }
+encoded = ~(timestampMs * 0x1000 + counter)   // counter 每次 +1，溢出进位
+hex12   = encoded & 0xffffffffffffn
+id      = `ses_${hex12}${base62(randomBytes(14))}`
 ```
 
-即 `opencode/<channel>/<version>/<client-name>`。
+那些「真实 id」之所以能用，是因为它们本来就长这样——不是服务端查了登记表。
+按同样规则本地生成，效果完全等价，且不依赖本机装过 OpenCode。
 
-### 2.2 L2：session 必须是真实登记过的
-
-这是最难发现的一层。
-
-**实测矩阵**（同一请求体、同一 UA/client）：
-
-| project id | session id | 结果 |
-|---|---|---|
-| 真实 | 真实 | ✅ 200 |
-| 真实 | 随机 `ses_<hex>` | ❌ 500 |
-| 随机 | 真实 | ✅ 200 |
-| 随机 | 真实格式但随机 | ❌ 500 |
-
-结论：
-- **`x-opencode-session` 必须是 OpenCode 服务端登记过的真实会话 id**
-- `x-opencode-project` 可以是任意值（随机也能过）
-
-**怎么拿到真实 session id**：opencode 本地存储里有历史会话文件名
-
-```
-~/.local/share/opencode/storage/session_diff/ses_<id>.json
-```
-
-任意一个都可用（实测用 50 个历史会话里的第一个，直接 200）。
-插件会自动扫描这个目录取最新的一个；也可以用 `config.sessionId` 显式指定。
-
-也可以用 opencode 现造一个：
-
-```bash
-opencode run "hi"    # 会在 session_diff 下生成新的 ses_*.json
-```
+实现见 `lib/session-id.js`，每个宿主会话映射到一个稳定 id，保留服务端
+sticky 路由与 `reasoning.encrypted_content` 重放能力。
 
 ### 2.3 L3：tools 里必须同时有 `bash` 和 `read`
 
-这是「工具链路参数」的核心。
-
-**实测矩阵**（同一 session、同一伪装头）：
+实测矩阵（同一 session、同一伪装头）：
 
 | tools 内容 | 结果 |
 |---|---|
@@ -120,45 +105,43 @@ opencode run "hi"    # 会在 session_diff 下生成新的 ses_*.json
 | 只有 `read` 一个 | ✅ 200 |
 | `read` 改名成 `my_read` | ❌ 500 |
 | `read` 保留名但描述/参数全简化 | ✅ 200 |
-| 12 个工具全改名 | ❌ 500 |
 | 自定义工具 + 补齐 `bash`/`read` | ✅ 200 |
 
-**结论：上游只认 `function.name` 这个字面量**，描述和参数随意。
+上游只认 `function.name` 这个字面量，描述和参数随意。DSH 的工具命名是
+`ops_*` 一类，所以必须补齐。
 
-DSH 的工具命名是 `ops_inspect_local_file` / `ops_glob` 一类，没有叫 `bash`/`read` 的，
-所以**必须补齐**，否则所有请求 500。
-
-### 2.4 请求体其他参数
+### 2.4 请求体参数
 
 ```json
 {
   "model": "space-bunny-free",
   "messages": [...],
   "tools": [ /* 必须含 bash 与 read */ ],
-  "stream": true,                                  // 必须 true，非流式被拒
+  "stream": true,
   "stream_options": { "include_usage": true },
-  "max_completion_tokens": 32000,                  // 不是 max_tokens
+  "max_completion_tokens": 32000,
   "store": false
 }
 ```
 
-`b3` / `traceparent` 是 W3C 追踪头，抓包里出现，但实测**不发送也能 200**，插件不发。
+完整身份头集合（缺一不可）：
+
+```
+Authorization
+User-Agent
+x-opencode-client
+x-opencode-project
+x-opencode-session
+x-client-request-id    ← 与 x-opencode-session 同值
+x-opencode-request     ← msg_ + 12 hex + 14 base62
+```
 
 ---
 
 ## 3. 上游偶发 HTTP 500
 
-即使三层校验全对，上游仍会偶发 `500`（`Content-Length: 0`，无响应体）。
-
-实测 opencode 客户端本体对同一请求会连续重试 **6~8 次**才成功：
-
-```
-seq#1 status=500 len=62361
-seq#2 status=500 len=62361
-...
-seq#7 status=500 len=62361
-seq#8 status=200 len=62361
-```
+即使四层校验全对，上游仍会偶发 `500`（`Content-Length: 0`，无响应体）。
+实测 opencode 客户端本体对同一请求会连续重试 6~8 次才成功。
 
 pi-ai 内置的 `maxRetries` 默认只有 2，不够穿过这个窗口。
 所以 shim 实现了指数退避重试（默认 12 次，400ms 起，上限 4s）。
@@ -173,13 +156,14 @@ DSH agent-loop
       └─ pi-ai provider      (openai-completions, baseUrl = shim)
           └─ loopback shim   127.0.0.1:<随机端口>
               ├─ 补齐 bash/read 门禁工具 + 强制 stream
-              ├─ 注入 OpenCode 伪装头（含真实 session id）
+              ├─ 派生时间戳编码 session id
+              ├─ 注入完整 OpenCode 身份头
               ├─ 指数退避重试
-              └─ HTTPS → opencode.ai/inference/openai/v1
+              └─ HTTPS → opencode.ai/zen/v1
 ```
 
 为什么需要 shim：pi-ai 没有「请求体改写钩子」，无法在发出前补门禁工具；
-而 `maxRetries` 也不足以穿透 500 窗口。
+`maxRetries` 也不足以穿透 500 窗口。
 
 ### 门禁工具是真实工具，不是占位
 
@@ -192,7 +176,7 @@ DSH agent-loop
 整轮对话被带偏。注册成真工具后，网关校验通过的同时模型调用也能真正落地。
 
 若宿主工具注册表不可用（`ctx.get('tools')` 缺失），插件会告警并降级为
-「仅注入名字」，此时 Model 调用门禁工具会被丢弃。
+「仅注入名字」，此时模型调用门禁工具会被丢弃。
 
 ---
 
@@ -201,8 +185,9 @@ DSH agent-loop
 ### 5.1 前置
 
 1. DSH Desktop `0.2.1-rc.2`
-2. 本机装过 opencode 并至少跑过一次（生成真实 session）
-3. **仅 private 模式需要**：OpenCode Console API key
+2. **仅 private 模式需要**：OpenCode Console API key
+
+不需要装 OpenCode，不需要登录，不需要任何本地数据。
 
 ### 5.2 部署
 
@@ -247,15 +232,12 @@ private 模式：
 | 字段 | 默认 | 说明 |
 |---|---|---|
 | `mode` | `anonymous` | `anonymous` 免 key / `private` 用自有 key |
-| `sessionId` | 自动发现 | 真实的 OpenCode session id |
-| `projectId` | 自动生成 | `x-opencode-project` |
+| `baseUrl` | `https://opencode.ai/zen/v1` | 上游端点 |
 | `maxAttempts` | 12 | 上游 5xx 的最大尝试次数 |
 | `retryBaseDelayMs` | 400 | 首次退避毫秒 |
 | `retryMaxDelayMs` | 4000 | 退避上限毫秒 |
 | `registerGateTools` | `true` | 把 bash/read 注册为真实工具 |
-| `clientVersion` | `2.0.32` | UA 里的版本号 |
-| `channel` | `latest` | UA 里的 channel |
-| `baseUrl` | `https://opencode.ai/inference/openai/v1` | 上游端点 |
+| `streamIdleTimeoutMs` | 180000 | 流式空闲超时毫秒 |
 
 ### 5.4 重启 DSH
 
@@ -265,24 +247,31 @@ private 模式：
 
 ## 6. 验证
 
-### 6.1 命令行快速验证（匿名，无需 key）
+### 命令行快速验证（匿名，无需 key）
 
 ```bash
-# 取一个真实 session id
-SID=$(ls ~/.local/share/opencode/storage/session_diff/ | grep '^ses_' | head -1 | sed 's/\.json$//')
-PROJ=$(openssl rand -hex 20)
+# 生成一个时间戳编码的 session id
+SID=$(node -e "
+const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const b62=(b,l)=>{let o='';for(let i=0;i<l;i++)o+=B62[b[i%b.length]%62];return o;};
+let ts=-1,c=0;
+const t=Math.max(Date.now(),ts); if(t!==ts)c=0; ts=t; if(++c>0xfff){ts++;c=1;}
+const e=~(BigInt(ts)*0x1000n+BigInt(c));
+const {randomBytes}=require('crypto');
+console.log(\`ses_\${(e&0xffffffffffffn).toString(16).padStart(12,'0')}\${b62(randomBytes(14),14)}\`);
+")
+REQ=$(node -e "const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';const b62=(b,l)=>{let o='';for(let i=0;i<l;i++)o+=B62[b[i%b.length]%62];return o;};const {randomBytes}=require('crypto');console.log(\`msg_\${randomBytes(6).toString('hex')}\${b62(randomBytes(14),14)}\`)")
 
-curl -sN https://opencode.ai/inference/openai/v1/chat/completions \
+curl -sN https://opencode.ai/zen/v1/chat/completions \
   -H "Authorization: Bearer public" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: opencode/latest/2.0.32/cli" \
+  -H "User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-free/0.1.2" \
   -H "x-opencode-client: cli" \
-  -H "x-opencode-project: $PROJ" \
+  -H "x-opencode-project: global" \
   -H "x-opencode-session: $SID" \
-  -H "x-opencode-session-id: $SID" \
-  -H "x-session-affinity: $SID" \
-  -H "x-session-id: $SID" \
-  -d "{\"model\":\"space-bunny-free\",\"messages\":[{\"role\":\"user\",\"content\":\"say OK\"}],\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"bash\",\"description\":\"Run a command\",\"parameters\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"}},\"required\":[\"command\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"read\",\"description\":\"Read a file\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}}],\"stream\":true,\"stream_options\":{\"include_usage\":true},\"store\":false}"
+  -H "x-client-request-id: $SID" \
+  -H "x-opencode-request: $REQ" \
+  -d '{"model":"space-bunny-free","messages":[{"role":"user","content":"say OK"}],"tools":[{"type":"function","function":{"name":"bash","description":"Run a command","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]}}},{"type":"function","function":{"name":"read","description":"Read a file","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}}],"stream":true,"stream_options":{"include_usage":true},"store":false}'
 ```
 
 看到 `data: {"id":"...","object":"chat.completion.chunk"...}` 即通。
@@ -292,31 +281,19 @@ curl -sN https://opencode.ai/inference/openai/v1/chat/completions \
 | 现象 | 原因 |
 |---|---|
 | `403 FreeTierError` | 缺 UA 或 `x-opencode-client` |
-| `500` 且 body 为空 | session 不真实，或 tools 里缺 `bash`/`read` |
+| `500` 且 body 为空 | session 不是时间戳编码形态，或 tools 里缺 `bash`/`read` |
+| `403 RegionError` | 该模型不在你所在地区（如 `beam-free`） |
 | 偶发 `500` | 上游瞬时故障，重试 |
 | `401` | private 模式的 key 无效 |
-
-### 6.2 工具链路验证
-
-带 `bash` 工具，期望返回 `tool_calls`：
-
-```
-"tool_calls":[{"index":0,"id":"call-...","type":"function",
-  "function":{"name":"bash","arguments":"{\"command\":\"echo hi\"}"}}]
-"finish_reason":"tool_calls"
-```
 
 ---
 
 ## 7. 已知限制
 
-1. **session 依赖本地 opencode**：`x-opencode-session` 必须真实，因此本机必须
-   装过 opencode 并跑过至少一次。纯新机器需要先 `opencode run "hi"`。
-2. **部分模型当前不可用**：见第 1 节。属上游故障，换模型即可。
-3. **公共额度有速率限制**：匿名模式共享公共池，高峰期可能被限流；此时切 `private` 模式。
-4. **免费层政策可能收紧**：这套伪装头绕过的是客户端校验，上游随时可能改规则。
-5. **数据条款**：部分模型会把输入用于改进模型，勿传敏感数据。
-6. `beam-free` 明确排除中国大陆/香港/澳门等地区。
+1. **部分模型地区受限**：`beam-free` 明确排除中国大陆/香港/澳门等地区。
+2. **公共额度有速率限制**：匿名模式共享公共池，高峰期可能被限流；此时切 `private` 模式。
+3. **免费层政策可能收紧**：这套身份头绕过的是客户端校验，上游随时可能改规则。
+4. **数据条款**：部分模型会把输入用于改进模型，勿传敏感数据。
 
 ---
 
@@ -332,5 +309,5 @@ dsh plugin --profile desktop remove dsh-opencode-free
 
 ## 9. 合规提示
 
-伪装头绕过的是 OpenCode 免费层的客户端校验。建议仅用于个人实验，
+身份头绕过的是 OpenCode 免费层的客户端校验。建议仅用于个人实验，
 不要用于生产，不要处理机密信息。上游政策变化时请及时停用。

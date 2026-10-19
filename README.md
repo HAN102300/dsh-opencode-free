@@ -2,222 +2,52 @@
 
 把 **OpenCode Zen 的免费模型**接入 **DeepSeek Harness（DSH）** 的模型选择器。
 
-- **anonymous（默认）**：`Authorization: Bearer public` 走公共额度，**无需 API key**
-- **private**：使用自己的 OpenCode Console API key（`oc_sk_...`）
-- **零本地依赖**：不需要本机装过 OpenCode，不需要登录，不需要读任何本地数据
-
-所有结论来自实测抓包与逐项二分验证，非文档推测。
-
----
-
-## 1. 免费模型清单与实测可用性
-
-| 模型 ID | 实测状态 | 说明 |
-|---|---|---|
-| `space-bunny-free` | ✅ 可用 | Stealth 模型，零留存策略 |
-| `big-pickle` | ✅ 可用 | Stealth 模型，免费期数据可能用于改进 |
-| `longcat-2.5-preview-free` | ✅ 可用 | 零留存 |
-| `mimo-v2.6-flash-free` | ✅ 可用 | 免费期数据可能用于改进 |
-| `glm-5.3-flash-free` | ✅ 可用 | 限时免费、零留存 |
-| `deepseek-v4.1-flash-free` | ✅ 可用 | 限时免费 |
-| `beam-free` | ❌ 地区限制 | 返回 `RegionError`；文档声明中国大陆/香港/澳门不可用 |
-| `nemotron-3.5-lightning-free` | ✅ 可用 | NVIDIA 试用端点，勿传敏感数据 |
-| `nemotron-3.5-super-vl-free` | 未测 | NVIDIA 试用端点，支持视觉 |
-| `jev-1.13-free` | 未纳入 | **System One 结构化决策模型，不是聊天模型** |
-
-> 注：早期版本曾把 `glm-5.3-flash-free`、`deepseek-v4.1-flash-free` 等标为「上游故障」，
-> 那是误判。真实原因是当时用的 session id 生成算法不对（见 §2.2），修正后全部可用。
+- **免 key 即可用**：默认走公共额度，不需要 OpenCode Console 账号
+- **零本地依赖**：不需要本机装过 OpenCode，不需要登录，不读任何本地数据
+- **零第三方依赖**：只依赖 Node 内置模块与 DSH 自身的包
+- 支持工具调用，`bash` / `read` 是真实可执行的工具，不是占位
 
 ---
 
-## 2. 免费层的四层校验
+## 安装
 
-免费模型**不是**「拿到 key 就能直连的 OpenAI 兼容端点」。上游对请求做四层独立校验：
-
-| 层 | 缺什么 | 错误 |
-|---|---|---|
-| L1 客户端身份 | UA / `x-opencode-client` | `403 FreeTierError` |
-| L2 会话形态 | `ses_` 后 12 位 hex 不是时间戳编码 | `500`（空 body） |
-| L3 门禁工具 | `tools` 里不同时含 `bash` 和 `read` | `500`（空 body） |
-| L4 流式 | `stream` 不为 `true` | 被拒 |
-
-### 2.1 L1：客户端身份头
-
-缺 UA 或 `x-opencode-client` 时返回：
-
-```json
-HTTP 403
-{"type":"error","error":{"type":"FreeTierError",
- "message":"OpenCode's free tier can only be used from within OpenCode. Download it at https://opencode.ai and keep building."}}
-```
-
-插件发送的身份头：
-
-```
-User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.1.2
-x-opencode-client: cli
-x-opencode-project: global
-```
-
-只写 `opencode/<version>/cli` 也能过 L1，但真实客户端是复合 UA，对齐更稳。
-`x-opencode-project` 可以是任意字符串。
-
-### 2.2 L2：session 必须是「时间戳编码」形态
-
-这是最容易踩的坑，也推翻了一个流传较广的误解。
-
-**误解**：`x-opencode-session` 必须是「OpenCode 服务端登记过的真实会话」，
-于是插件被迫去读本机 `~/.local/share/opencode/storage/session_diff/`，
-在没装 OpenCode 的机器上直接不可用。
-
-**实测矩阵**（同一 UA、同一请求头，只改 session 生成方式）：
-
-| session 形态 | 结果 |
-|---|---|
-| 随机 hex（`ses_` + 48 hex 字符） | ❌ 500 |
-| sha256 哈希派生的 hex | ❌ 500 |
-| 从本地 opencode 存储读的真实历史 id | ✅ 200 |
-| **时间戳编码 + base62 尾部** | ✅ 200 |
-
-真正的规则是 `ses_` 之后前 12 位十六进制必须是**时间戳编码值**：
-
-```js
-encoded = ~(timestampMs * 0x1000 + counter)   // counter 每次 +1，溢出进位
-hex12   = encoded & 0xffffffffffffn
-id      = `ses_${hex12}${base62(randomBytes(14))}`
-```
-
-那些「真实 id」之所以能用，是因为它们本来就长这样——不是服务端查了登记表。
-按同样规则本地生成，效果完全等价，且不依赖本机装过 OpenCode。
-
-实现见 `lib/session-id.js`，每个宿主会话映射到一个稳定 id，保留服务端
-sticky 路由与 `reasoning.encrypted_content` 重放能力。
-
-### 2.3 L3：tools 里必须同时有 `bash` 和 `read`
-
-实测矩阵（同一 session、同一伪装头）：
-
-| tools 内容 | 结果 |
-|---|---|
-| 完整 12 个 opencode 工具 | ✅ 200 |
-| 删掉 `read`，留 11 个 | ❌ 500 |
-| `tools: []` | ❌ 500 |
-| 只有 `read` 一个 | ✅ 200 |
-| `read` 改名成 `my_read` | ❌ 500 |
-| `read` 保留名但描述/参数全简化 | ✅ 200 |
-| 自定义工具 + 补齐 `bash`/`read` | ✅ 200 |
-
-上游只认 `function.name` 这个字面量，描述和参数随意。DSH 的工具命名是
-`ops_*` 一类，所以必须补齐。
-
-### 2.4 请求体参数
-
-```json
-{
-  "model": "space-bunny-free",
-  "messages": [...],
-  "tools": [ /* 必须含 bash 与 read */ ],
-  "stream": true,
-  "stream_options": { "include_usage": true },
-  "max_completion_tokens": 32000,
-  "store": false
-}
-```
-
-完整身份头集合（缺一不可）：
-
-```
-Authorization
-User-Agent
-x-opencode-client
-x-opencode-project
-x-opencode-session
-x-client-request-id    ← 与 x-opencode-session 同值
-x-opencode-request     ← msg_ + 12 hex + 14 base62
-```
-
----
-
-## 3. 上游偶发 HTTP 500
-
-即使四层校验全对，上游仍会偶发 `500`（`Content-Length: 0`，无响应体）。
-实测 opencode 客户端本体对同一请求会连续重试 6~8 次才成功。
-
-pi-ai 内置的 `maxRetries` 默认只有 2，不够穿过这个窗口。
-所以 shim 实现了指数退避重试（默认 12 次，400ms 起，上限 4s）。
-
----
-
-## 4. 架构
-
-```
-DSH agent-loop
-  └─ PiAiAdapter            (dsh-llm-pi-ai 的公开 seam)
-      └─ pi-ai provider      (openai-completions, baseUrl = shim)
-          └─ loopback shim   127.0.0.1:<随机端口>
-              ├─ 补齐 bash/read 门禁工具 + 强制 stream
-              ├─ 派生时间戳编码 session id
-              ├─ 注入完整 OpenCode 身份头
-              ├─ 指数退避重试
-              └─ HTTPS → opencode.ai/zen/v1
-```
-
-为什么需要 shim：pi-ai 没有「请求体改写钩子」，无法在发出前补门禁工具；
-`maxRetries` 也不足以穿透 500 窗口。
-
-### 门禁工具是真实工具，不是占位
-
-`bash` 和 `read` 由 `lib/gate-tools.js` 实现为**可执行**工具：
-
-- `bash`：真正跑 shell 命令，返回退出码与输出
-- `read`：真正读文件/目录，逐行加行号前缀
-
-只挂名字不实现会比不挂更糟——模型会去调一个永远执行不了的占位工具，
-整轮对话被带偏。注册成真工具后，网关校验通过的同时模型调用也能真正落地。
-
-若宿主工具注册表不可用（`ctx.get('tools')` 缺失），插件会告警并降级为
-「仅注入名字」，此时模型调用门禁工具会被丢弃。
-
----
-
-## 5. 安装
-
-### 5.1 前置
-
-1. DSH Desktop `0.2.1-rc.2`
-2. **仅 private 模式需要**：OpenCode Console API key
-
-不需要装 OpenCode，不需要登录，不需要任何本地数据。
-
-### 5.2 部署
+### 1. 复制到 profile
 
 ```bash
 PROFILE="$USERPROFILE/.dsh/profiles/desktop"
 cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 ```
 
-`package.json` 的 `dependencies` 加入：
+### 2. 注册到 profile
+
+编辑 `~/.dsh/profiles/desktop/package.json`：
+
+`dependencies` 加入：
 
 ```json
 "dsh-opencode-zen-free": "file:./node_modules/dsh-opencode-zen-free"
 ```
 
-`dsh.profile.bundles` 数组加入 `"dsh-opencode-zen-free"`。
+`dsh.profile.bundles` 数组加入：
 
-### 5.3 配置
+```json
+"dsh-opencode-zen-free"
+```
 
-`~/.dsh/profiles/desktop/cordis.patch.yml` 追加：
+### 3. 配置
+
+编辑 `~/.dsh/profiles/desktop/cordis.patch.yml`，追加：
 
 ```yaml
 - id: llm-opencode-zen-free
   name: "dsh-opencode-zen-free"
   config:
-    mode: anonymous          # 免 key；改成 private 用自己的 key
+    mode: anonymous          # 免 key 走公共额度；改成 private 用自己的 key
     providerId: "opencode-zen-free"
     displayName: "OpenCode Zen 免费模型"
 ```
 
-private 模式：
+想用自己的 Console API key（公共额度被限流时更稳）：
 
 ```yaml
 - id: llm-opencode-zen-free
@@ -227,77 +57,74 @@ private 模式：
     apiKey: "oc_sk_你的key"
 ```
 
-可选覆盖：
+### 4. 重启 DSH
 
-| 字段 | 默认 | 说明 |
-|---|---|---|
-| `mode` | `anonymous` | `anonymous` 免 key / `private` 用自有 key |
-| `baseUrl` | `https://opencode.ai/zen/v1` | 上游端点 |
-| `maxAttempts` | 12 | 上游 5xx 的最大尝试次数 |
-| `retryBaseDelayMs` | 400 | 首次退避毫秒 |
-| `retryMaxDelayMs` | 4000 | 退避上限毫秒 |
-| `registerGateTools` | `true` | 把 bash/read 注册为真实工具 |
-| `streamIdleTimeoutMs` | 180000 | 流式空闲超时毫秒 |
-
-### 5.4 重启 DSH
-
-重启后模型选择器出现「**OpenCode 免费模型**」分组。
+模型选择器会出现「**OpenCode Zen 免费模型**」分组。
 
 ---
 
-## 6. 验证
+## 可用模型
 
-### 命令行快速验证（匿名，无需 key）
-
-```bash
-# 生成一个时间戳编码的 session id
-SID=$(node -e "
-const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-const b62=(b,l)=>{let o='';for(let i=0;i<l;i++)o+=B62[b[i%b.length]%62];return o;};
-let ts=-1,c=0;
-const t=Math.max(Date.now(),ts); if(t!==ts)c=0; ts=t; if(++c>0xfff){ts++;c=1;}
-const e=~(BigInt(ts)*0x1000n+BigInt(c));
-const {randomBytes}=require('crypto');
-console.log(\`ses_\${(e&0xffffffffffffn).toString(16).padStart(12,'0')}\${b62(randomBytes(14),14)}\`);
-")
-REQ=$(node -e "const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';const b62=(b,l)=>{let o='';for(let i=0;i<l;i++)o+=B62[b[i%b.length]%62];return o;};const {randomBytes}=require('crypto');console.log(\`msg_\${randomBytes(6).toString('hex')}\${b62(randomBytes(14),14)}\`)")
-
-curl -sN https://opencode.ai/zen/v1/chat/completions \
-  -H "Authorization: Bearer public" \
-  -H "Content-Type: application/json" \
-  -H "User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.1.2" \
-  -H "x-opencode-client: cli" \
-  -H "x-opencode-project: global" \
-  -H "x-opencode-session: $SID" \
-  -H "x-client-request-id: $SID" \
-  -H "x-opencode-request: $REQ" \
-  -d '{"model":"space-bunny-free","messages":[{"role":"user","content":"say OK"}],"tools":[{"type":"function","function":{"name":"bash","description":"Run a command","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]}}},{"type":"function","function":{"name":"read","description":"Read a file","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}}],"stream":true,"stream_options":{"include_usage":true},"store":false}'
-```
-
-看到 `data: {"id":"...","object":"chat.completion.chunk"...}` 即通。
-
-**排错对照**：
-
-| 现象 | 原因 |
+| 模型 | 说明 |
 |---|---|
-| `403 FreeTierError` | 缺 UA 或 `x-opencode-client` |
-| `500` 且 body 为空 | session 不是时间戳编码形态，或 tools 里缺 `bash`/`read` |
-| `403 RegionError` | 该模型不在你所在地区（如 `beam-free`） |
-| 偶发 `500` | 上游瞬时故障，重试 |
-| `401` | private 模式的 key 无效 |
+| `space-bunny-free` | Stealth 模型，零留存策略 |
+| `big-pickle` | Stealth 模型，免费期数据可能用于改进 |
+| `longcat-2.5-preview-free` | 零留存 |
+| `mimo-v2.6-flash-free` | 免费期数据可能用于改进 |
+| `glm-5.3-flash-free` | 限时免费，零留存 |
+| `deepseek-v4.1-flash-free` | 限时免费 |
+| `nemotron-3.5-lightning-free` | NVIDIA 试用端点，勿传敏感数据 |
+| `nemotron-3.5-super-vl-free` | NVIDIA 试用端点，支持图片输入 |
+| `beam-free` | 数据保留 30 天；**中国大陆/香港/澳门不可用** |
+
+> 免费模型由 OpenCode 侧提供，可用性与数据条款随时可能变化，以官方说明为准。
 
 ---
 
-## 7. 已知限制
+## 配置项
 
-1. **部分模型地区受限**：`beam-free` 明确排除中国大陆/香港/澳门等地区。
-2. **公共额度有速率限制**：匿名模式共享公共池，高峰期可能被限流；此时切 `private` 模式。
-3. **免费层政策可能收紧**：这套身份头绕过的是客户端校验，上游随时可能改规则。
-4. **数据条款**：部分模型会把输入用于改进模型，勿传敏感数据。
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `mode` | `anonymous` | `anonymous` 免 key；`private` 用自己的 Console API key |
+| `apiKey` | — | Console API key，仅 `private` 模式使用；留空则读 `OPENCODE_API_KEY` |
+| `baseUrl` | `https://opencode.ai/zen/v1` | 上游端点 |
+| `providerId` | `opencode-zen-free` | 在模型选择器里的 provider id |
+| `displayName` | `OpenCode Zen 免费模型` | 模型分组显示名 |
+| `maxAttempts` | `12` | 上游偶发错误时的最大重试次数 |
+| `retryBaseDelayMs` | `400` | 首次重试等待毫秒（之后按倍数增长） |
+| `retryMaxDelayMs` | `4000` | 重试等待上限毫秒 |
+| `streamIdleTimeoutMs` | `180000` | 流式响应空闲超时 |
+| `registerGateTools` | `true` | 把 `bash` / `read` 注册为可执行工具 |
 
 ---
 
-## 8. 卸载
+## 常见问题
+
+**模型调用返回 `RegionError`**
+
+该模型不在你所在地区开放。`beam-free` 明确排除中国大陆/香港/澳门等地区，换其他模型即可。
+
+**间歇性失败**
+
+上游偶发空响应错误，插件会自动重试（默认最多 12 次）。若持续失败，换一个模型，或切到 `private` 模式使用自有额度。
+
+**`private` 模式全部 401**
+
+`apiKey` 没配上。检查 `cordis.patch.yml` 里的 `apiKey`，或设置环境变量 `OPENCODE_API_KEY`。
+
+**看不到「OpenCode Zen 免费模型」分组**
+
+1. 确认 `package.json` 的 `dependencies` 与 `dsh.profile.bundles` 都加了
+2. 确认 `cordis.patch.yml` 里的 `id` 是 `llm-opencode-zen-free`
+3. 重启 DSH Desktop
+
+**模型不调用工具**
+
+`bash` 与 `read` 需要注册成功才会被调用。若启动日志里有「未找到工具注册表」告警，说明宿主的工具服务未就绪——重启 DSH 通常可解决。
+
+---
+
+## 卸载
 
 ```bash
 dsh plugin --profile desktop remove dsh-opencode-zen-free
@@ -307,7 +134,10 @@ dsh plugin --profile desktop remove dsh-opencode-zen-free
 
 ---
 
-## 9. 合规提示
+## 说明
 
-身份头绕过的是 OpenCode 免费层的客户端校验。建议仅用于个人实验，
-不要用于生产，不要处理机密信息。上游政策变化时请及时停用。
+- 免费额度为共享池，高峰期可能被限流，`private` 模式更稳。
+- 部分免费模型会把输入用于改进模型，**勿传敏感数据**。
+- 建议仅用于个人实验，不要用于生产环境。
+
+想了解免费层的准入机制与实现细节，见 [NOTES.md](NOTES.md)。

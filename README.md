@@ -1,4 +1,4 @@
-# dsh-opencode-free
+# dsh-opencode-zen-free
 
 把 **OpenCode Zen 的免费模型**接入 **DeepSeek Harness（DSH）** 的模型选择器。
 
@@ -54,7 +54,7 @@ HTTP 403
 插件发送的身份头：
 
 ```
-User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-free/0.1.2
+User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.1.2
 x-opencode-client: cli
 x-opencode-project: global
 ```
@@ -193,35 +193,35 @@ DSH agent-loop
 
 ```bash
 PROFILE="$USERPROFILE/.dsh/profiles/desktop"
-cp -r dsh-opencode-free "$PROFILE/node_modules/"
+cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 ```
 
 `package.json` 的 `dependencies` 加入：
 
 ```json
-"dsh-opencode-free": "file:./node_modules/dsh-opencode-free"
+"dsh-opencode-zen-free": "file:./node_modules/dsh-opencode-zen-free"
 ```
 
-`dsh.profile.bundles` 数组加入 `"dsh-opencode-free"`。
+`dsh.profile.bundles` 数组加入 `"dsh-opencode-zen-free"`。
 
 ### 5.3 配置
 
 `~/.dsh/profiles/desktop/cordis.patch.yml` 追加：
 
 ```yaml
-- id: llm-opencode-free
-  name: "dsh-opencode-free"
+- id: llm-opencode-zen-free
+  name: "dsh-opencode-zen-free"
   config:
     mode: anonymous          # 免 key；改成 private 用自己的 key
-    providerId: "opencode-free"
-    displayName: "OpenCode 免费模型"
+    providerId: "opencode-zen-free"
+    displayName: "OpenCode Zen 免费模型"
 ```
 
 private 模式：
 
 ```yaml
-- id: llm-opencode-free
-  name: "dsh-opencode-free"
+- id: llm-opencode-zen-free
+  name: "dsh-opencode-zen-free"
   config:
     mode: private
     apiKey: "oc_sk_你的key"
@@ -265,7 +265,7 @@ REQ=$(node -e "const B62='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr
 curl -sN https://opencode.ai/zen/v1/chat/completions \
   -H "Authorization: Bearer public" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-free/0.1.2" \
+  -H "User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.1.2" \
   -H "x-opencode-client: cli" \
   -H "x-opencode-project: global" \
   -H "x-opencode-session: $SID" \
@@ -300,10 +300,10 @@ curl -sN https://opencode.ai/zen/v1/chat/completions \
 ## 8. 卸载
 
 ```bash
-dsh plugin --profile desktop remove dsh-opencode-free
+dsh plugin --profile desktop remove dsh-opencode-zen-free
 ```
 
-并从 `cordis.patch.yml` 删除 `llm-opencode-free` 段落。
+并从 `cordis.patch.yml` 删除 `llm-opencode-zen-free` 段落。
 
 ---
 

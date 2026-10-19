@@ -1,13 +1,13 @@
-# dsh-opencode-free 收录状态
+# dsh-opencode-zen-free 收录状态
 
 **当前状态：PR 已提交，仅等仓库年龄达标。**
 
 | 项 | 值 |
 |---|---|
-| 插件仓库 | https://github.com/HAN102300/dsh-opencode-free |
+| 插件仓库 | https://github.com/HAN102300/dsh-opencode-zen-free |
 | 收录 PR | https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/7884 |
 | `dsh-plugin` topic | ✅ 已添加 |
-| 条目文件 | `data/plugins/HAN102300__dsh-opencode-free.yml` |
+| 条目文件 | `data/plugins/HAN102300__dsh-opencode-zen-free.yml` |
 | CI 结果 | `check` ✅ 通过；`Submission gate` ❌ 仅因仓库年龄 |
 | 需人工操作 | **无** |
 
@@ -18,7 +18,7 @@
 ```
 Submission gate — 1 entry/entries need changes
 
-https://github.com/HAN102300/dsh-opencode-free
+https://github.com/HAN102300/dsh-opencode-zen-free
 - repository is 0.0 days old (needs 1) — nothing to do: this check re-runs by
   itself and should clear in about 24h. No need to resubmit, push, or close and
   reopen; the age bar is the only thing failing here.
@@ -54,11 +54,11 @@ https://github.com/HAN102300/dsh-opencode-free
 
 ## 条目内容
 
-`data/plugins/HAN102300__dsh-opencode-free.yml`：
+`data/plugins/HAN102300__dsh-opencode-zen-free.yml`：
 
 ```yaml
-url: https://github.com/HAN102300/dsh-opencode-free
-name: HAN102300/dsh-opencode-free
+url: https://github.com/HAN102300/dsh-opencode-zen-free
+name: HAN102300/dsh-opencode-zen-free
 category: model
 description:
   en: 'OpenCode Zen free-tier models for DeepSeek Harness with anonymous no-key access, a loopback OpenAI-compatible shim, and real bash/read gate tools.'
@@ -105,10 +105,10 @@ PR 描述里已经主动说明了差异（零第三方依赖、约 30KB、聚焦
 ### 更新条目（改描述/分类）
 
 ```bash
-# 在 fork 的 add-dsh-opencode-free 分支上直接改
+# 在 fork 的 add-dsh-opencode-zen-free 分支上直接改
 cd awesome-dsh-plugin
-git checkout add-dsh-opencode-free
-vim data/plugins/HAN102300__dsh-opencode-free.yml
+git checkout add-dsh-opencode-zen-free
+vim data/plugins/HAN102300__dsh-opencode-zen-free.yml
 git commit -am "Update description"
 git push
 ```
@@ -132,12 +132,12 @@ git push
 好处：预构建安装免 `allowBuilds` 步骤；市场可显示下载量。
 
 ```bash
-cd dsh-opencode-free
+cd dsh-opencode-zen-free
 npm publish
 ```
 
 注意：
-- `package.json` 的 `repository` 必须指回被收录的仓库（已配好：`HAN102300/dsh-opencode-free`）
+- `package.json` 的 `repository` 必须指回被收录的仓库（已配好：`HAN102300/dsh-opencode-zen-free`）
 - 映射自动采集，**条目里不要手写 `npm:` 字段**，会被校验拒绝
 
 ### 加截图
@@ -155,12 +155,12 @@ npm publish
 ## 仓库最终结构
 
 ```
-dsh-opencode-free/          https://github.com/HAN102300/dsh-opencode-free
+dsh-opencode-zen-free/          https://github.com/HAN102300/dsh-opencode-zen-free
 ├── .gitignore
 ├── LICENSE                 Apache-2.0（GitHub 建库时生成）
 ├── README.md               完整技术文档 + 排错对照表
 ├── SUBMISSION.md           本文件
-├── cordis.patch.yml        insert llm-opencode-free
+├── cordis.patch.yml        insert llm-opencode-zen-free
 ├── package.json            dsh.bundle + 预发布分支 peerDependencies
 └── lib/
     ├── index.js            Cordis 入口、provider 注册、门禁工具注册

@@ -1,6 +1,6 @@
 {
-  "name": "dsh-opencode-free",
-  "displayName": "DSH OpenCode Free",
+  "name": "dsh-opencode-zen-free",
+  "displayName": "DSH OpenCode Zen Free",
   "description": "Brings OpenCode Zen free-tier models into DeepSeek Harness, with anonymous no-key access and a local OpenAI-compatible shim.",
   "version": "0.2.0",
   "type": "module",
@@ -17,6 +17,7 @@
     "dsh-plugin",
     "deepseek-harness",
     "opencode",
+    "opencode-zen",
     "model-provider",
     "free-models"
   ],
@@ -33,12 +34,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HAN102300/dsh-opencode-free.git"
+    "url": "git+https://github.com/HAN102300/dsh-opencode-zen-free.git"
   },
   "bugs": {
-    "url": "https://github.com/HAN102300/dsh-opencode-free/issues"
+    "url": "https://github.com/HAN102300/dsh-opencode-zen-free/issues"
   },
-  "homepage": "https://github.com/HAN102300/dsh-opencode-free#readme",
+  "homepage": "https://github.com/HAN102300/dsh-opencode-zen-free#readme",
   "files": [
     "lib",
     "cordis.patch.yml",

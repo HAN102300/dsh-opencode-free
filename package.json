@@ -2,7 +2,7 @@
   "name": "dsh-opencode-zen-free",
   "displayName": "DSH OpenCode Zen Free",
   "description": "Brings OpenCode Zen free-tier models into DeepSeek Harness, with anonymous no-key access and a local OpenAI-compatible shim.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "main": "lib/index.js",
   "engines": {

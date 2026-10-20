@@ -20,7 +20,7 @@
 ### L1：身份头
 
 ```
-User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.1.2
+User-Agent: opencode/1.18.31 ai-sdk/provider-utils/4.0.40 runtime/bun/1.3.14 dsh-opencode-zen-free/0.3.0
 x-opencode-client: cli
 x-opencode-project: global
 ```
@@ -78,7 +78,7 @@ sticky 路由与 `reasoning.encrypted_content` 重放能力。
 
 ```json
 {
-  "model": "space-bunny-free",
+  "model": "glm-5.3-flash-free",
   "messages": [...],
   "tools": [ /* 必须含 bash 与 read */ ],
   "stream": true,
@@ -160,7 +160,21 @@ DSH agent-loop
 
 ## 5. 模型元数据的取值
 
-上游 models 端点不返回 `contextWindow` / `maxTokens`，`FREE_MODELS` 里给的是
-保守值（200K / 32K）。这只是让 DSH 的上下文压缩更早触发，不会溢出。
+上游 models 端点只返回 `{id, object, created, owned_by}`，不带
+`contextWindow` / `maxTokens`，`FREE_MODELS` 里给的是保守值（200K / 32K）。
+这只是让 DSH 的上下文压缩更早触发，不会溢出。
 
 若 OpenCode 后续在端点暴露这些字段，应改为动态读取。
+
+### 清单的维护口径
+
+清单以 models 端点**实际返回的 id** 为准，不照抄官方文档。2026-10-20 核对时
+两者存在差异：
+
+| 端点返回 | 文档有、端点没有 | 说明 |
+|---|---|---|
+| 10 个免费 id | `exo-free`、`ll-alpha-free`、`mimo-v2.5-free`、`nemotron-3-ultra-free` | 文档列了但端点未返回，不纳入 |
+| 含 `jev-1.13-free` | — | 该模型走 systemone API（结构化判定，非对话），不能作为 chat 模型，不纳入 |
+
+已下线的 `space-bunny-free` 同样以端点为准移除，替代模型
+`minimax-m3.1-flash-free` 已加入。

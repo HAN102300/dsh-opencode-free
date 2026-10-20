@@ -11,14 +11,26 @@
 
 ## 安装
 
-### 1. 复制到 profile
+推荐用 npm 安装（也可手动复制文件，见下方「手动安装」）。
+
+### 方式一：npm（推荐）
+
+```bash
+dsh plugin add dsh-opencode-zen-free
+```
+
+然后跳到第 3 步「配置」。
+
+如果 `dsh plugin` 子命令在你的版本里不可用，退回到方式二。
+
+### 方式二：手动安装
+
+复制到 profile 的 `node_modules`：
 
 ```bash
 PROFILE="$USERPROFILE/.dsh/profiles/desktop"
 cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 ```
-
-### 2. 注册到 profile
 
 编辑 `~/.dsh/profiles/desktop/package.json`：
 
@@ -34,7 +46,7 @@ cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 "dsh-opencode-zen-free"
 ```
 
-### 3. 配置
+### 配置
 
 编辑 `~/.dsh/profiles/desktop/cordis.patch.yml`，追加：
 
@@ -57,7 +69,7 @@ cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
     apiKey: "oc_sk_你的key"
 ```
 
-### 4. 重启 DSH
+### 重启 DSH
 
 模型选择器会出现「**OpenCode Zen 免费模型**」分组。
 
@@ -65,19 +77,23 @@ cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 
 ## 可用模型
 
+清单取自 OpenCode 的 models 端点（`https://opencode.ai/zen/v1/models`）实际返回的 id，不是照抄官方文档。
+
 | 模型 | 说明 |
 |---|---|
-| `space-bunny-free` | Stealth 模型，零留存策略 |
 | `big-pickle` | Stealth 模型，免费期数据可能用于改进 |
 | `longcat-2.5-preview-free` | 零留存 |
 | `mimo-v2.6-flash-free` | 免费期数据可能用于改进 |
 | `glm-5.3-flash-free` | 限时免费，零留存 |
-| `deepseek-v4.1-flash-free` | 限时免费 |
+| `deepseek-v4.1-flash-free` | 限时免费，零留存 |
+| `minimax-m3.1-flash-free` | 限时免费，零留存 |
 | `nemotron-3.5-lightning-free` | NVIDIA 试用端点，勿传敏感数据 |
 | `nemotron-3.5-super-vl-free` | NVIDIA 试用端点，支持图片输入 |
-| `beam-free` | 数据保留 30 天；**中国大陆/香港/澳门不可用** |
+| `beam-free` | 数据保留 30 天；**中国大陆/香港/澳门等地区不可用** |
 
 > 免费模型由 OpenCode 侧提供，可用性与数据条款随时可能变化，以官方说明为准。
+> 上游会增删免费模型（例如 `space-bunny-free` 已下线），插件不自动跟随，
+> 更新插件即可拿到新清单。
 
 ---
 
@@ -107,6 +123,18 @@ cp -r dsh-opencode-zen-free "$PROFILE/node_modules/"
 **间歇性失败**
 
 上游偶发空响应错误，插件会自动重试（默认最多 12 次）。若持续失败，换一个模型，或切到 `private` 模式使用自有额度。
+
+**所有模型返回 `FreeTierError`（提示「can only be used from within OpenCode」）**
+
+这不是配置问题，是 OpenCode 侧对**出口 IP** 的风控判定。免费层是 IP 维度封禁，与账号无关，换 API key 无效。表现通常是：免费模型全部 403，而付费模型仍能正常返回余额/计费错误。
+
+可尝试的解法（按成功率排序，均不保证）：
+
+1. 换一个干净的出口 IP（重启光猫、切换网络、换代理节点）
+2. 用 `private` 模式配合自己的 Console key —— 若付费层正常，这条能立刻恢复可用
+3. 邮件申诉至 `help@anoma.ly`（OpenCode 官方只认这个渠道，GitHub issue 多为模板回复）
+
+若你之前密集测试过，很可能触发了频次阈值；建议改为按需调用，不要短时间大量重试。
 
 **`private` 模式全部 401**
 
